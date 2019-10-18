@@ -1,0 +1,150 @@
+# Create an OSEv3 group that contains the masters and nodes groups
+[OSEv3:children]
+masters
+nodes
+etcd
+lb
+nfs
+
+[masters]
+lab-openshift-master1.localdomain.ar
+lab-openshift-master2.localdomain.ar
+lab-openshift-master3.localdomain.ar
+
+[etcd]
+lab-openshift-master1.localdomain.ar
+lab-openshift-master2.localdomain.ar
+lab-openshift-master3.localdomain.ar
+
+[nodes]
+lab-openshift-master1.localdomain.ar openshift_node_group_name="node-config-master"
+lab-openshift-master2.localdomain.ar openshift_node_group_name="node-config-master"
+lab-openshift-master3.localdomain.ar openshift_node_group_name="node-config-master"
+lab-openshift-infra1.localdomain.ar openshift_node_group_name="node-config-infra"
+lab-openshift-infra2.localdomain.ar openshift_node_group_name="node-config-infra"
+lab-openshift-infra3.localdomain.ar openshift_node_group_name="node-config-infra"
+lab-openshift-nodo1.localdomain.ar openshift_node_group_name="node-config-compute"
+lab-openshift-nodo2.localdomain.ar openshift_node_group_name="node-config-compute"
+lab-openshift-nodo3.localdomain.ar openshift_node_group_name="node-config-compute"
+
+[lb]
+lab-openshift-lb.localdomain.ar
+
+[nfs]
+lab-openshift-lb.localdomain.ar
+
+# Información de la configuración del cluster
+
+[OSEv3:vars]
+ansible_ssh_user=ocp
+ansible_become=yes
+
+#Necesario para la utilización de NFS para los Persistent Volumes
+openshift_enable_unsupported_configurations=true
+
+
+# Tipo de Deployment
+openshift_deployment_type=origin
+openshift_release="3.11"
+openshift_image_tag="v3.11.0"
+openshift_pkg_version="-3.11.0"
+
+# Balanceo
+openshift_master_cluster_method=native
+
+# Configuración de nombres de rutas y wildcar DNS
+
+# Nombre del dominio configurado como wildcard en DNS
+# Configuración del Wildcard
+# *.lab-openshift.localdomain.ar
+# Debe apuntar a lab-openshift-lb.localdomain.ar
+openshift_master_default_subdomain=lab-openshift.localdomain.ar
+
+# DNS de acceso a la consola web de aplicación.
+load_balancer_hostname=okd.{{ openshift_master_default_subdomain }}
+
+openshift_master_cluster_hostname="{{ load_balancer_hostname }}"
+openshift_master_cluster_public_hostname="{{ load_balancer_hostname }}"
+openshift_docker_options=""
+openshift_install_examples=true
+osm_use_cockpit=true
+osm_cockpit_plugins=['cockpit-kubernetes']
+use_openshift_sdn=true
+os_sdn_network_plugin_name='redhat/openshift-ovs-subnet'
+osm_cluster_network_cidr=10.128.0.0/14
+openshift_portal_net=172.30.0.0/16
+osm_host_subnet_length=9
+openshift_master_api_port=8443
+openshift_master_console_port=8443
+
+# Opciones de Firewall
+os_firewall_use_firewalld=True
+
+# Proxy Options
+openshift_http_proxy="http://IP-PROXYSERVER:PORT"
+openshift_https_proxy="http://IP-PROXYSERVER:PORT"
+
+# Cambiar los valores necesarios
+openshift_no_proxy=".cluster.local,.svc,localhost,127.0.0.1,172.30.0.1,10.128.0.0/24,0.0.0.0,.localdomain.ar,.lab-openshift.localdomain.ar,lab-openshift-master1.localdomain.ar,lab-openshift-master2.localdomain.ar,lab-openshift-master3.localdomain.ar,lab-openshift-infra1.localdomain.ar,lab-openshift-infra2.localdomain.ar,lab-openshift-infra3.localdomain.ar,lab-openshift-nodo1.localdomain.ar,lab-openshift-nodo2.localdomain.ar,lab-openshift-nodo3.localdomain.ar,lab-openshift-lb.localdomain.ar"
+openshift_generate_no_proxy_hosts=true
+
+# Certificate Validity
+openshift_hosted_registry_cert_expire_days=1825
+openshift_ca_cert_expire_days=3650
+openshift_node_cert_expire_days=1825
+openshift_master_cert_expire_days=1825
+etcd_ca_default_days=1825
+
+openshift_master_htpasswd_file=/etc/htpasswd
+
+
+# Configuracion de NFS
+# Actualizar con el FQDN del servidor nfs definido en el grupo [nfs]
+nfs_hostname=lab-openshift-lb.localdomain.ar
+
+# Registry
+openshift_hosted_registry_storage_kind=nfs
+openshift_hosted_registry_storage_access_modes=['ReadWriteMany']
+openshift_hosted_registry_storage_host={{ nfs_hostname }}
+openshift_hosted_registry_storage_nfs_directory=/exports
+openshift_hosted_registry_storage_volume_name=registry
+openshift_hosted_registry_storage_volume_size=100Gi
+
+# Cluster Metrics
+openshift_metrics_install_metrics=true
+openshift_metrics_storage_kind=nfs
+openshift_metrics_storage_access_modes=['ReadWriteOnce']
+openshift_metrics_storage_host={{ nfs_hostname }}
+openshift_metrics_storage_nfs_directory=/exports
+openshift_metrics_storage_volume_name=metrics
+openshift_metrics_storage_volume_size=40Gi
+openshift_metrics_storage_labels={'storage': 'metrics'}
+
+# Cluster Monitoring
+openshift_cluster_monitoring_operator_install=true
+openshift_cluster_monitoring_operator_prometheus_storage_capacity=50Gi
+openshift_cluster_monitoring_operator_alertmanager_storage_capacity=2Gi
+openshift_cluster_monitoring_operator_prometheus_storage_enabled=true
+openshift_cluster_monitoring_operator_alertmanager_storage_enabled=true
+
+# Cluster Logging
+openshift_logging_es_ops_nodeselector={"node-role.kubernetes.io/infra":"true"}
+openshift_logging_es_nodeselector={"node-role.kubernetes.io/infra":"true"}
+openshift_logging_es_pvc_dynamic=true
+openshift_logging_install_logging=true
+openshift_logging_use_ops=false
+openshift_logging_storage_kind=nfs
+openshift_logging_storage_access_modes=['ReadWriteOnce']
+openshift_logging_storage_host={{ nfs_hostname }}
+openshift_logging_storage_nfs_directory=/exports
+openshift_logging_storage_volume_name=logging
+openshift_logging_curator_default_days=7
+openshift_logging_storage_volume_size=100Gi
+openshift_logging_es_memory_limit=8Gi
+openshift_logging_storage_nfs_options=*(rw,root_squash)
+openshift_logging_storage_labels={:storage=>"logging"}
+openshift_logging_curator_run_hour=23
+openshift_logging_curator_run_minute=59
+openshift_logging_curator_run_timezone=America/Argentina/Buenos_Aires
+openshift_logging_curator_nodeselector={"node-role.kubernetes.io/infra":"true"}
+openshift_logging_kibana_nodeselector={"node-role.kubernetes.io/infra":"true"}
